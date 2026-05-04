@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,7 +9,7 @@
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+  import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   // ── PASTE YOUR FIREBASE CONFIG HERE ──
   const firebaseConfig = {
@@ -27,6 +27,30 @@
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
   const wishesRef = ref(db, "wishes");
+  // ===== ADMIN MODE =====
+// ===== ADMIN CODE (TYPE 8722) =====
+let isAdmin = false;
+
+let adminBuffer = "";
+
+document.addEventListener("keydown", (e) => {
+  // Only capture numbers
+  if (!/[0-9]/.test(e.key)) return;
+
+  adminBuffer += e.key;
+
+  // Keep last 4 digits only
+  if (adminBuffer.length > 4) {
+    adminBuffer = adminBuffer.slice(-4);
+  }
+
+  // Check code
+  if (adminBuffer === "8722") {
+    isAdmin = true;
+    adminBuffer = "";
+    alert("Admin mode enabled");
+  }
+});
 
   // Send wish
   window.sendWish = async function() {
@@ -48,14 +72,48 @@
     const container = document.getElementById("wishes-list");
     container.innerHTML = "";
     if (!data) return;
-    const list = Object.values(data).reverse();
-    list.forEach((w, i) => {
-      const card = document.createElement("div");
-      card.className = "wcard";
-      card.style.setProperty("--r", ((i%2===0?1:-1) * (.4 + (i*.18)%1.6)) + "deg");
-      card.innerHTML = `${w.text}<span class="wheart">💛</span>`;
-      container.appendChild(card);
-    });
+    const entries = Object.entries(data).reverse();
+entries.forEach(([id, w], i) => {
+  const card = document.createElement("div");
+  card.className = "wcard";
+  card.style.setProperty("--r", ((i%2===0?1:-1) * (.4 + (i*.18)%1.6)) + "deg");
+
+  // MAIN TEXT
+  const text = document.createElement("div");
+  text.innerHTML = `${w.text} <span class="wheart">💛</span>`;
+  card.appendChild(text);
+
+  // DELETE BUTTON (ADMIN ONLY)
+  const del = document.createElement("button");
+  del.innerText = "Delete";
+  del.style.marginTop = "6px";
+  del.style.display = "none";
+  del.style.background = "rgba(255,0,0,0.2)";
+  del.style.border = "1px solid red";
+  del.style.color = "white";
+  del.style.cursor = "pointer";
+  del.style.fontSize = "0.7rem";
+
+  card.appendChild(del);
+
+  // Show delete if admin
+  const checkAdmin = setInterval(() => {
+    if (isAdmin) {
+      del.style.display = "block";
+      clearInterval(checkAdmin);
+    }
+  }, 500);
+
+  // DELETE FUNCTION
+  del.onclick = () => {
+  if (confirm("Delete this wish?")) {
+    remove(ref(db, "wishes/" + id));
+    card.remove();
+  }
+};
+
+  container.appendChild(card);
+});
   });
 </script>
 
